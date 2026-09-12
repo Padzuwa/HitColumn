@@ -14,7 +14,7 @@ export default defineConfig({
         'favicon-16x16.png'
       ],
       devOptions: {
-        enabled: false, // ✅ disable in dev to avoid stale cache while testing
+        enabled: false,
         type: 'module'
       },
       manifest: {
@@ -44,19 +44,28 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // ✅ Force new service worker to take over immediately
+        // ✅ Force new SW to take over on deploy
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
 
+        // ✅ Raise cache limit (optional — but globIgnores is the real fix)
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+
+        // ✅ Only precache small files
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        globIgnores: ['**/hitlogo-*.png', '**/darkbg-*.jpg'],
+
+        // ✅ EXCLUD large assets from precache
+        globIgnores: [
+          '**/hitlogo*.png',
+          '**/darkbg*.jpg',
+          '**/hitlogo-*.png',
+          '**/darkbg-*.jpg'
+        ],
 
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/.*/i,
-            // ✅ NetworkFirst for audio — serves fresh, falls back to cache only offline
             handler: 'NetworkFirst',
             options: {
               cacheName: 'hitcolumn-audio',
@@ -64,6 +73,21 @@ export default defineConfig({
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 * 7
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            // Cache hitlogo/darkbg at runtime (not precache)
+            urlPattern: /\.(?:png|jpg|jpeg|svg|webp)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'hitcolumn-images',
+              expiration: {
+                maxEntries: 60,
+                maxAgeSeconds: 60 * 60 * 24 * 30
               },
               cacheableResponse: {
                 statuses: [0, 200]
