@@ -44,25 +44,12 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // ✅ Force new SW to take over on deploy
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
-
-        // ✅ Raise cache limit (optional — but globIgnores is the real fix)
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
-
-        // ✅ Only precache small files
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-
-        // ✅ EXCLUD large assets from precache
-        globIgnores: [
-          '**/hitlogo*.png',
-          '**/darkbg*.jpg',
-          '**/hitlogo-*.png',
-          '**/darkbg-*.jpg'
-        ],
-
+        globIgnores: ['**/hitlogo*.png', '**/darkbg*.jpg'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/.*/i,
@@ -80,7 +67,6 @@ export default defineConfig({
             }
           },
           {
-            // Cache hitlogo/darkbg at runtime (not precache)
             urlPattern: /\.(?:png|jpg|jpeg|svg|webp)$/i,
             handler: 'CacheFirst',
             options: {
