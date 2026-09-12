@@ -7,15 +7,21 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'favicon-32x32.png', 'favicon-16x16.png'],
+      includeAssets: [
+        'favicon.ico',
+        'apple-touch-icon.png',
+        'favicon-32x32.png',
+        'favicon-16x16.png'
+      ],
       devOptions: {
-        enabled: true,
+        enabled: false, // ✅ disable in dev to avoid stale cache while testing
         type: 'module'
       },
       manifest: {
         name: 'HitColumn',
         short_name: 'HitColumn',
-        description: 'Where hits are uploaded. Stream and share music from artists everywhere.',
+        description:
+          'Where hits are uploaded. Stream and share music from artists everywhere.',
         theme_color: '#d36c42',
         background_color: '#070b12',
         display: 'standalone',
@@ -38,18 +44,26 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // ✅ Force new service worker to take over immediately
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         globIgnores: ['**/hitlogo-*.png', '**/darkbg-*.jpg'],
+
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/.*/i,
-            handler: 'CacheFirst',
+            // ✅ NetworkFirst for audio — serves fresh, falls back to cache only offline
+            handler: 'NetworkFirst',
             options: {
               cacheName: 'hitcolumn-audio',
+              networkTimeoutSeconds: 8,
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 30
+                maxAgeSeconds: 60 * 60 * 24 * 7
               },
               cacheableResponse: {
                 statuses: [0, 200]

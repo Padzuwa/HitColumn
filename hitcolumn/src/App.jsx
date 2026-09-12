@@ -105,7 +105,6 @@ export default function App() {
             )}
           </div>
           <nav className="hc-nav">
-            <NavLink to="/songs">Songs</NavLink>
             <NavLink to="/about">About</NavLink>
             <NavLink to="/support">Support</NavLink>
           </nav>
