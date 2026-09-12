@@ -32,82 +32,91 @@ export default function Upload() {
     )
   }
 
-  async function handleUpload(e) {
-    e.preventDefault()
-    setUploading(true)
-    setMessage('')
-    setErrorMsg('')
+ async function handleUpload(e) {
+  e.preventDefault()
+  setUploading(true)
+  setMessage('')
+  setErrorMsg('')
 
-    const { data: userData, error: userError } = await supabase.auth.getUser()
-    if (userError || !userData.user) {
-      setErrorMsg('Please log in first.')
-      setUploading(false)
-      return
-    }
-
-    const user = userData.user
-
-    const { data: limitData, error: limitError } = await supabase
-      .from('upload_limits')
-      .select('uploads_used, max_uploads')
-      .eq('artist_id', user.id)
-      .single()
-
-    if (limitError || limitData.uploads_used >= limitData.max_uploads) {
-      setErrorMsg('Upload limit reached. Contact admin to upgrade.')
-      setUploading(false)
-      return
-    }
-
-    const audioName = `${user.id}/${Date.now()}-${audioFile.name}`
-    const { data: audioData, error: audioError } = await supabase.storage
-      .from('songs')
-      .upload(audioName, audioFile)
-
-    if (audioError) {
-      setErrorMsg('Audio upload failed: ' + audioError.message)
-      setUploading(false)
-      return
-    }
-
-    let coverUrl = null
-    if (coverFile) {
-      const coverName = `${user.id}/${Date.now()}-${coverFile.name}`
-      const { data: coverData, error: coverError } = await supabase.storage
-        .from('songs')
-        .upload(coverName, coverFile)
-      if (!coverError) {
-        coverUrl = supabase.storage.from('songs').getPublicUrl(coverData.path).data.publicUrl
-      }
-    }
-
-    const audioUrl = supabase.storage.from('songs').getPublicUrl(audioData.path).data.publicUrl
-
-    const { error: insertError } = await supabase.from('songs').insert({
-      artist_id: user.id,
-      title,
-      genre,
-      audio_url: audioUrl,
-      cover_url: coverUrl,
-      status: 'approved'
-    })
-
-    if (insertError) {
-      setErrorMsg('Failed to save song: ' + insertError.message)
-    } else {
-      await supabase
-        .from('upload_limits')
-        .update({ uploads_used: limitData.uploads_used + 1 })
-        .eq('artist_id', user.id)
-
-      setMessage('Song uploaded successfully!')
-      setTitle('')
-      setGenre('Afrobeat')
-      setAudioFile(null)
-      setCoverFile(null)
-    }
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) {
+    setErrorMsg('Please log in first.')
     setUploading(false)
+    return
   }
+
+  const user = userData.user
+
+  const { data: limitData, error: limitError } = await supabase
+    .from('upload_limits')
+    .select('uploads_used, max_uploads')
+    .eq('artist_id', user.id)
+    .single()
+
+  if (limitError || limitData.uploads_used >= limitData.max_uploads) {
+    setErrorMsg('Upload limit reached. Contact admin to upgrade.')
+    setUploading(false)
+    return
+  }
+
+  const audioName = `${user.id}/${Date.now()}-${audioFile.name}`
+  const { data: audioData, error: audioError } = await supabase.storage
+    .from('songs')
+    .upload(audioName, audioFile)
+
+  if (audioError) {
+    setErrorMsg('Audio upload failed: ' + audioError.message)
+    setUploading(false)
+    return
+  }
+
+  let coverUrl = null
+  if (coverFile) {
+    const coverName = `${user.id}/${Date.now()}-${coverFile.name}`
+    const { data: coverData, error: coverError } = await supabase.storage
+      .from('songs')
+      .upload(coverName, coverFile)
+    if (!coverError) {
+      coverUrl = supabase.storage.from('songs').getPublicUrl(coverData.path).data.publicUrl
+    }
+  }
+
+  const audioUrl = supabase.storage.from('songs').getPublicUrl(audioData.path).data.publicUrl
+
+  // ✅ Generate slug from title
+  const slugBase = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  const uniqueSlug = `${slugBase}-${Date.now().toString(36).slice(-6)}`
+
+  const { error: insertError } = await supabase.from('songs').insert({
+    artist_id: user.id,
+    title,
+    genre,
+    audio_url: audioUrl,
+    cover_url: coverUrl,
+    status: 'approved',
+    slug: uniqueSlug
+  })
+
+  if (insertError) {
+    setErrorMsg('Failed to save song: ' + insertError.message)
+  } else {
+    await supabase
+      .from('upload_limits')
+      .update({ uploads_used: limitData.uploads_used + 1 })
+      .eq('artist_id', user.id)
+
+    setMessage('Song uploaded successfully!')
+    setTitle('')
+    setGenre('Afrobeat')
+    setAudioFile(null)
+    setCoverFile(null)
+  }
+  setUploading(false)
+}
 
   return (
     <div className="hc-container">
@@ -146,13 +155,18 @@ export default function Upload() {
 
             <div className="hc-field">
               <label className="hc-label">Audio File (MP3)</label>
+              <p className="hc-small hc-muted" style={{ marginTop: '4px' }}>
+  Max 20 MB. MP3 or WAV.
+</p>
+              
               <input
-                className="hc-input"
-                type="file"
-                accept="audio/*"
-                onChange={(e) => setAudioFile(e.target.files[0])}
-                required
-              />
+  key={uploading ? 'uploading' : 'idle'}
+  className="hc-input"
+  type="file"
+  accept="audio/*"
+  onChange={(e) => setAudioFile(e.target.files[0])}
+  required
+    />
             </div>
 
             <div className="hc-field hc-field-full">
@@ -183,8 +197,12 @@ export default function Upload() {
       <a href="tel:+265992404606" className="hc-btn hc-btn-secondary">
         <i className="fas fa-phone"></i> +265 992 404 606
       </a>
-      <a href="https://wa.me/265992404606" target="_blank" className="hc-btn hc-btn-secondary">
-        <i className="fab fa-whatsapp"></i> WhatsApp
+      <a
+     href="https://wa.me/265992404606"
+    target="_blank"
+       rel="noopener noreferrer"
+       className="hc-btn hc-btn-secondary"
+        >
       </a>
     </div>
     <p className="hc-small hc-muted" style={{ marginTop: '1.5rem' }}>
