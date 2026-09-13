@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { trackPlay, trackDownload } from '../utils/counters'
 import TrackCard from '../components/TrackCard'
+import { searchSongs } from '../utils/search'
 
 export default function Songs() {
   const [songs, setSongs] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [genre, setGenre] = useState('All')
 
   useEffect(() => {
     fetchSongs()
@@ -46,19 +47,13 @@ export default function Songs() {
   const getArtistName = (row) =>
     row?.artist_name || row?.artists?.artist_name || 'Unknown Artist'
 
-  const genres = ['All', ...Array.from(new Set(songs.map((s) => s.genre).filter(Boolean)))]
+  const genres = [
+    'All',
+    ...Array.from(new Set(songs.map((s) => s.genre).filter(Boolean)))
+  ]
 
-  const filteredSongs = songs.filter((song) => {
-    const q = search.toLowerCase().trim()
-    const matchesSearch =
-      !q ||
-      song.title?.toLowerCase().includes(q) ||
-      song.genre?.toLowerCase().includes(q) ||
-      getArtistName(song).toLowerCase().includes(q)
-
-    const matchesGenre = genre === 'All' || song.genre === genre
-    return matchesSearch && matchesGenre
-  })
+  // ✅ Fuzzy search (no genre state — genre now lives in its own page)
+  const filteredSongs = searchSongs(songs, search, getArtistName)
 
   if (loading) {
     return (
@@ -85,7 +80,11 @@ export default function Songs() {
             onChange={(e) => setSearch(e.target.value)}
           />
           {search && (
-            <button className="hc-search-clear" onClick={() => setSearch('')} aria-label="Clear">
+            <button
+              className="hc-search-clear"
+              onClick={() => setSearch('')}
+              aria-label="Clear"
+            >
               <i className="fas fa-times"></i>
             </button>
           )}
@@ -94,13 +93,13 @@ export default function Songs() {
         {genres.length > 1 && (
           <div className="hc-chips">
             {genres.map((g) => (
-              <button
+              <Link
                 key={g}
-                className={`hc-chip ${genre === g ? 'is-active' : ''}`}
-                onClick={() => setGenre(g)}
+                to={g === 'All' ? '/songs' : `/genre/${g.toLowerCase()}`}
+                className="hc-chip"
               >
                 {g}
-              </button>
+              </Link>
             ))}
           </div>
         )}
@@ -108,12 +107,21 @@ export default function Songs() {
         <p className="hc-small hc-muted" style={{ marginTop: '1rem' }}>
           {filteredSongs.length} {filteredSongs.length === 1 ? 'song' : 'songs'}
           {search && ` for "${search}"`}
-          {genre !== 'All' && ` in ${genre}`}
         </p>
 
         {filteredSongs.length === 0 ? (
-          <div className="hc-card hc-card-pad" style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-            <i className="fas fa-search" style={{ fontSize: '2rem', color: 'var(--hc-text-subtle)', marginBottom: '1rem' }}></i>
+          <div
+            className="hc-card hc-card-pad"
+            style={{ textAlign: 'center', marginTop: '1.5rem' }}
+          >
+            <i
+              className="fas fa-search"
+              style={{
+                fontSize: '2rem',
+                color: 'var(--hc-text-subtle)',
+                marginBottom: '1rem'
+              }}
+            ></i>
             <p className="hc-muted">No songs found. Try another search.</p>
           </div>
         ) : (
@@ -134,8 +142,12 @@ export default function Songs() {
 
       <footer className="hc-footer">
         <div className="hc-footer-content">
-          <h3 className="hc-section-title" style={{ fontSize: '1.3rem' }}>Contact HitColumn</h3>
-          <p className="hc-muted">For business inquiries, support, or partnerships.</p>
+          <h3 className="hc-section-title" style={{ fontSize: '1.3rem' }}>
+            Contact HitColumn
+          </h3>
+          <p className="hc-muted">
+            For business inquiries, support, or partnerships.
+          </p>
           <div className="hc-footer-links">
             <a href="mailto:peazydesun@gmail.com" className="hc-btn hc-btn-secondary">
               <i className="fas fa-envelope"></i> peazydesun@gmail.com
@@ -143,7 +155,12 @@ export default function Songs() {
             <a href="tel:+265992404606" className="hc-btn hc-btn-secondary">
               <i className="fas fa-phone"></i> +265 992 404 606
             </a>
-            <a href="https://wa.me/265992404606" target="_blank" rel="noopener noreferrer" className="hc-btn hc-btn-secondary">
+            <a
+              href="https://wa.me/265992404606"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hc-btn hc-btn-secondary"
+            >
               <i className="fab fa-whatsapp"></i> WhatsApp
             </a>
           </div>

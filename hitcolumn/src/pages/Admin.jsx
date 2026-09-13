@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { searchSongs } from '../utils/search'
 
 export default function Admin() {
   const [user, setUser] = useState(null)
@@ -34,26 +35,37 @@ export default function Admin() {
     init()
   }, [navigate])
 
-async function loadAll() {
-  const [s, a, m, sub, l] = await Promise.all([
-    supabase.from('songs').select('*, artists:artist_id (artist_name)').order('created_at', { ascending: false }),
-    supabase.from('artists').select('*').order('created_at', { ascending: false }),
-    supabase.from('support_messages').select('*').order('created_at', { ascending: false }),
-    supabase.from('subscriptions').select('*, artists:artist_id (artist_name)').order('created_at', { ascending: false }),
-    supabase.from('upload_limits').select('*')
-  ])
-  setSongs(s.data || [])
-  setArtists(a.data || [])
-  setMessages(m.data || [])
-  setSubs(sub.data || [])
-  setLimits(l.data || [])
-}
+  async function loadAll() {
+    const [s, a, m, sub, l] = await Promise.all([
+      supabase
+        .from('songs')
+        .select('*, artists:artist_id (artist_name)')
+        .order('created_at', { ascending: false }),
+      supabase.from('artists').select('*').order('created_at', { ascending: false }),
+      supabase.from('support_messages').select('*').order('created_at', { ascending: false }),
+      supabase
+        .from('subscriptions')
+        .select('*, artists:artist_id (artist_name)')
+        .order('created_at', { ascending: false }),
+      supabase.from('upload_limits').select('*')
+    ])
+    setSongs(s.data || [])
+    setArtists(a.data || [])
+    setMessages(m.data || [])
+    setSubs(sub.data || [])
+    setLimits(l.data || [])
+  }
 
   async function toggleSongStatus(song) {
     const newStatus = song.status === 'approved' ? 'pending' : 'approved'
-    const { error } = await supabase.from('songs').update({ status: newStatus }).eq('id', song.id)
+    const { error } = await supabase
+      .from('songs')
+      .update({ status: newStatus })
+      .eq('id', song.id)
     if (!error) {
-      setSongs((prev) => prev.map((s) => s.id === song.id ? { ...s, status: newStatus } : s))
+      setSongs((prev) =>
+        prev.map((s) => (s.id === song.id ? { ...s, status: newStatus } : s))
+      )
     }
   }
 
@@ -67,7 +79,10 @@ async function loadAll() {
     const planUploadsMap = { starter: 1, creator: 3, pro: 5, studio: 15 }
     const extraUploads = planUploadsMap[sub.plan] || 0
 
-    const { error: e1 } = await supabase.from('subscriptions').update({ status: 'approved' }).eq('id', sub.id)
+    const { error: e1 } = await supabase
+      .from('subscriptions')
+      .update({ status: 'approved' })
+      .eq('id', sub.id)
     if (e1) return
 
     const { data: currentLimit } = await supabase
@@ -84,8 +99,17 @@ async function loadAll() {
       .eq('artist_id', sub.artist_id)
 
     if (!e2) {
-      setSubs((prev) => prev.map((s) => s.id === sub.id ? { ...s, status: 'approved' } : s))
+      setSubs((prev) =>
+        prev.map((s) => (s.id === sub.id ? { ...s, status: 'approved' } : s))
+      )
     }
+  }
+
+  // ✅ ADD THIS — was missing and would crash on delete click
+  async function deleteSub(id) {
+    if (!confirm('Delete this subscription request permanently?')) return
+    const { error } = await supabase.from('subscriptions').delete().eq('id', id)
+    if (!error) setSubs((prev) => prev.filter((s) => s.id !== id))
   }
 
   if (loading) {
@@ -101,7 +125,6 @@ async function loadAll() {
   const totalDownloads = songs.reduce((sum, s) => sum + (s.download_count || 0), 0)
   const pendingSongs = songs.filter((s) => s.status !== 'approved').length
   const pendingSubs = subs.filter((s) => s.status === 'pending').length
-  const unreadMessages = messages.length
 
   const TABS = [
     { id: 'overview', label: 'Overview', icon: 'fas fa-chart-line' },
@@ -111,10 +134,10 @@ async function loadAll() {
     { id: 'subscriptions', label: 'Subscriptions', icon: 'fas fa-crown' }
   ]
 
-  const filteredSongs = songs.filter((s) =>
-    s.title?.toLowerCase().includes(search.toLowerCase()) ||
-    s.artists?.artist_name?.toLowerCase().includes(search.toLowerCase())
-  )
+  const getArtistName = (row) =>
+    row?.artist_name || row?.artists?.artist_name || 'Unknown Artist'
+
+  const filteredSongs = searchSongs(songs, search, getArtistName)
 
   return (
     <div className="hc-container">
@@ -123,7 +146,10 @@ async function loadAll() {
         <div className="hc-admin-header">
           <div>
             <span className="hc-eyebrow">Admin</span>
-            <h1 className="hc-display" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.6rem)', marginTop: '0.4rem' }}>
+            <h1
+              className="hc-display"
+              style={{ fontSize: 'clamp(1.8rem, 4vw, 2.6rem)', marginTop: '0.4rem' }}
+            >
               Dashboard
             </h1>
             <p className="hc-muted" style={{ marginTop: '4px' }}>
@@ -199,7 +225,10 @@ async function loadAll() {
           {tab === 'overview' && (
             <div className="hc-overview">
               <div className="hc-card hc-card-pad">
-                <h3 className="hc-section-title" style={{ fontSize: '1.15rem', marginBottom: '1rem' }}>
+                <h3
+                  className="hc-section-title"
+                  style={{ fontSize: '1.15rem', marginBottom: '1rem' }}
+                >
                   <i className="fas fa-bolt" style={{ color: 'var(--hc-brand)' }}></i> Quick Actions
                 </h3>
                 <div className="hc-quick-actions">
@@ -216,7 +245,10 @@ async function loadAll() {
               </div>
 
               <div className="hc-card hc-card-pad">
-                <h3 className="hc-section-title" style={{ fontSize: '1.15rem', marginBottom: '1rem' }}>
+                <h3
+                  className="hc-section-title"
+                  style={{ fontSize: '1.15rem', marginBottom: '1rem' }}
+                >
                   <i className="fas fa-list" style={{ color: 'var(--hc-brand)' }}></i> Recent Activity
                 </h3>
                 <ul className="hc-activity-list">
@@ -224,8 +256,10 @@ async function loadAll() {
                     <li key={s.id}>
                       <span className="hc-activity-dot"></span>
                       <div>
-                        <strong>{s.artists?.artist_name || 'Artist'}</strong> uploaded <em>{s.title}</em>
-                        <p className="hc-small hc-muted">{new Date(s.created_at).toLocaleDateString()}</p>
+                        <strong>{getArtistName(s)}</strong> uploaded <em>{s.title}</em>
+                        <p className="hc-small hc-muted">
+                          {new Date(s.created_at).toLocaleDateString()}
+                        </p>
                       </div>
                     </li>
                   ))}
@@ -266,21 +300,42 @@ async function loadAll() {
                     {filteredSongs.map((s) => (
                       <tr key={s.id}>
                         <td className="hc-td-strong">{s.title}</td>
-                        <td>{s.artists?.artist_name || '—'}</td>
+                        <td>{getArtistName(s)}</td>
                         <td><span className="hc-tag">{s.genre || '—'}</span></td>
                         <td>
-                          <span className={`hc-status ${s.status === 'approved' ? 'is-success' : 'is-warn'}`}>
-                            <i className={`fas ${s.status === 'approved' ? 'fa-check-circle' : 'fa-clock'}`}></i> {s.status}
+                          <span
+                            className={`hc-status ${
+                              s.status === 'approved' ? 'is-success' : 'is-warn'
+                            }`}
+                          >
+                            <i
+                              className={`fas ${
+                                s.status === 'approved' ? 'fa-check-circle' : 'fa-clock'
+                              }`}
+                            ></i>{' '}
+                            {s.status}
                           </span>
                         </td>
                         <td>{s.play_count || 0}</td>
                         <td>{s.download_count || 0}</td>
                         <td>
                           <div className="hc-row-actions">
-                            <button className="hc-icon-btn" onClick={() => toggleSongStatus(s)} title="Toggle status">
-                              <i className={`fas ${s.status === 'approved' ? 'fa-eye-slash' : 'fa-check'}`}></i>
+                            <button
+                              className="hc-icon-btn"
+                              onClick={() => toggleSongStatus(s)}
+                              title="Toggle status"
+                            >
+                              <i
+                                className={`fas ${
+                                  s.status === 'approved' ? 'fa-eye-slash' : 'fa-check'
+                                }`}
+                              ></i>
                             </button>
-                            <button className="hc-icon-btn is-danger" onClick={() => deleteSong(s.id)} title="Delete">
+                            <button
+                              className="hc-icon-btn is-danger"
+                              onClick={() => deleteSong(s.id)}
+                              title="Delete"
+                            >
                               <i className="fas fa-trash"></i>
                             </button>
                           </div>
@@ -294,69 +349,84 @@ async function loadAll() {
           )}
 
           {tab === 'artists' && (
-  <div className="hc-table-wrap">
-    <table className="hc-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Role</th>
-          <th>Uploads Used</th>
-          <th>Max Uploads</th>
-          <th>Remaining</th>
-          <th>Plan</th>
-          <th>Joined</th>
-        </tr>
-      </thead>
-      <tbody>
-        {artists.map((a) => {
-          const limit = limits.find((l) => l.artist_id === a.id)
-          const used = limit?.uploads_used ?? 0
-          const max = limit?.max_uploads ?? 3
-          const remaining = Math.max(max - used, 0)
-          const percent = max > 0 ? Math.min((used / max) * 100, 100) : 0
+            <div className="hc-table-wrap">
+              <table className="hc-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Uploads Used</th>
+                    <th>Max Uploads</th>
+                    <th>Remaining</th>
+                    <th>Plan</th>
+                    <th>Joined</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {artists.map((a) => {
+                    const limit = limits.find((l) => l.artist_id === a.id)
+                    const used = limit?.uploads_used ?? 0
+                    const max = limit?.max_uploads ?? 3
+                    const remaining = Math.max(max - used, 0)
+                    const percent = max > 0 ? Math.min((used / max) * 100, 100) : 0
 
-          return (
-            <tr key={a.id}>
-              <td className="hc-td-strong">{a.artist_name}</td>
-              <td>{a.email || '—'}</td>
-              <td>
-                {a.is_admin ? (
-                  <span className="hc-status is-brand">
-                    <i className="fas fa-shield-halved"></i> Admin
-                  </span>
-                ) : (
-                  <span className="hc-status">
-                    <i className="fas fa-user"></i> Artist
-                  </span>
-                )}
-              </td>
-              <td>
-                <div className="hc-usage">
-                  <div className="hc-usage-bar">
-                    <div
-                      className={`hc-usage-fill ${remaining === 0 ? 'is-full' : ''}`}
-                      style={{ width: `${percent}%` }}
-                    ></div>
-                  </div>
-                  <span className="hc-small hc-muted">{used}</span>
-                </div>
-              </td>
-              <td>{max}</td>
-              <td>
-                <span className={`hc-status ${remaining === 0 ? 'is-warn' : 'is-success'}`}>
-                  <i className={`fas ${remaining === 0 ? 'fa-exclamation-circle' : 'fa-check-circle'}`}></i> {remaining}
-                </span>
-              </td>
-              <td><span className="hc-tag">{limit?.plan || 'free'}</span></td>
-              <td>{new Date(a.created_at).toLocaleDateString()}</td>
-            </tr>
-          )
-        })}
-      </tbody>
-    </table>
-  </div>
-)}
+                    return (
+                      <tr key={a.id}>
+                        <td className="hc-td-strong">{a.artist_name}</td>
+                        <td>{a.email || '—'}</td>
+                        <td>
+                          {a.is_admin ? (
+                            <span className="hc-status is-brand">
+                              <i className="fas fa-shield-halved"></i> Admin
+                            </span>
+                          ) : (
+                            <span className="hc-status">
+                              <i className="fas fa-user"></i> Artist
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="hc-usage">
+                            <div className="hc-usage-bar">
+                              <div
+                                className={`hc-usage-fill ${
+                                  remaining === 0 ? 'is-full' : ''
+                                }`}
+                                style={{ width: `${percent}%` }}
+                              ></div>
+                            </div>
+                            <span className="hc-small hc-muted">{used}</span>
+                          </div>
+                        </td>
+                        <td>{max}</td>
+                        <td>
+                          <span
+                            className={`hc-status ${
+                              remaining === 0 ? 'is-warn' : 'is-success'
+                            }`}
+                          >
+                            <i
+                              className={`fas ${
+                                remaining === 0
+                                  ? 'fa-exclamation-circle'
+                                  : 'fa-check-circle'
+                              }`}
+                            ></i>{' '}
+                            {remaining}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="hc-tag">{limit?.plan || 'free'}</span>
+                        </td>
+                        <td>{new Date(a.created_at).toLocaleDateString()}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {tab === 'messages' && (
             <div className="hc-table-wrap">
@@ -376,7 +446,9 @@ async function loadAll() {
                         <div className="hc-td-strong">{m.name}</div>
                         <div className="hc-small hc-muted">{m.email}</div>
                       </td>
-                      <td><span className="hc-tag">{m.subject}</span></td>
+                      <td>
+                        <span className="hc-tag">{m.subject}</span>
+                      </td>
                       <td style={{ maxWidth: '360px' }}>{m.message}</td>
                       <td>{new Date(m.created_at).toLocaleDateString()}</td>
                     </tr>
@@ -385,55 +457,67 @@ async function loadAll() {
               </table>
             </div>
           )}
-{tab === 'subscriptions' && (
-  <div className="hc-table-wrap">
-    <table className="hc-table">
-      <thead>
-        <tr>
-          <th>Artist</th>
-          <th>Plan</th>
-          <th>Amount</th>
-          <th>Status</th>
-          <th style={{ textAlign: 'right' }}>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {subs.map((s) => (
-          <tr key={s.id}>
-            <td className="hc-td-strong">{s.artists?.artist_name || '—'}</td>
-            <td><span className="hc-tag">{s.plan}</span></td>
-            <td>MWK {(s.amount_mwk || 0).toLocaleString()}</td>
-            <td>
-              <span className={`hc-status ${s.status === 'approved' ? 'is-success' : 'is-warn'}`}>
-                <i className={`fas ${s.status === 'approved' ? 'fa-check-circle' : 'fa-clock'}`}></i> {s.status}
-              </span>
-            </td>
-            <td>
-              <div className="hc-row-actions">
-                {s.status !== 'approved' && (
-                  <button
-                    className="hc-icon-btn"
-                    onClick={() => approveSub(s)}
-                    title="Approve"
-                  >
-                    <i className="fas fa-check"></i>
-                  </button>
-                )}
-                <button
-                  className="hc-icon-btn is-danger"
-                  onClick={() => deleteSub(s.id)}
-                  title="Delete"
-                >
-                  <i className="fas fa-trash"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-)}
+
+          {tab === 'subscriptions' && (
+            <div className="hc-table-wrap">
+              <table className="hc-table">
+                <thead>
+                  <tr>
+                    <th>Artist</th>
+                    <th>Plan</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subs.map((s) => (
+                    <tr key={s.id}>
+                      <td className="hc-td-strong">{getArtistName(s)}</td>
+                      <td>
+                        <span className="hc-tag">{s.plan}</span>
+                      </td>
+                      <td>MWK {(s.amount_mwk || 0).toLocaleString()}</td>
+                      <td>
+                        <span
+                          className={`hc-status ${
+                            s.status === 'approved' ? 'is-success' : 'is-warn'
+                          }`}
+                        >
+                          <i
+                            className={`fas ${
+                              s.status === 'approved' ? 'fa-check-circle' : 'fa-clock'
+                            }`}
+                          ></i>{' '}
+                          {s.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="hc-row-actions">
+                          {s.status !== 'approved' && (
+                            <button
+                              className="hc-icon-btn"
+                              onClick={() => approveSub(s)}
+                              title="Approve"
+                            >
+                              <i className="fas fa-check"></i>
+                            </button>
+                          )}
+                          <button
+                            className="hc-icon-btn is-danger"
+                            onClick={() => deleteSub(s.id)}
+                            title="Delete"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </section>
     </div>

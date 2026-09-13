@@ -17,6 +17,17 @@ function pauseAllOtherAudios(except) {
   })
 }
 
+// ✅ Canonical link helper (uses <link>, not <meta>)
+function setCanonical(href) {
+  let tag = document.querySelector('link[rel="canonical"]')
+  if (!tag) {
+    tag = document.createElement('link')
+    tag.setAttribute('rel', 'canonical')
+    document.head.appendChild(tag)
+  }
+  tag.setAttribute('href', href)
+}
+
 export default function SongDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -175,20 +186,43 @@ export default function SongDetail() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  function setMeta(name, content, isProperty = false) {
+    const attr = isProperty ? 'property' : 'name'
+    let tag = document.querySelector(`meta[${attr}="${name}"]`)
+    if (!tag) {
+      tag = document.createElement('meta')
+      tag.setAttribute(attr, name)
+      document.head.appendChild(tag)
+    }
+    tag.setAttribute('content', content)
+  }
+
   function updatePageMeta(data) {
     const artistName = getArtistName(data)
+    const slug = data.slug || data.id
+    const canonicalUrl = `https://hitcolumn.vercel.app/song/${slug}`
+
+    // ✅ Title
     document.title = `${data.title} – ${artistName} | HitColumn`
 
+    // ✅ Canonical (uses <link>, not <meta>)
+    setCanonical(canonicalUrl)
+
+    // ✅ Standard meta
     setMeta(
       'description',
       `Listen to ${data.title} by ${artistName} on HitColumn. Free streaming and download.`
     )
+
+    // ✅ Open Graph
     setMeta('og:title', `${data.title} – ${artistName}`, true)
     setMeta('og:description', `Stream and download ${data.title} free on HitColumn.`, true)
     setMeta('og:image', data.cover_url || '', true)
     setMeta('og:type', 'music.song', true)
     setMeta('og:audio', data.audio_url, true)
+    setMeta('og:url', canonicalUrl, true)
 
+    // ✅ JSON-LD for Google
     const existing = document.getElementById('song-jsonld')
     if (existing) existing.remove()
 
@@ -203,20 +237,9 @@ export default function SongDetail() {
       genre: data.genre,
       image: data.cover_url,
       audio: { '@type': 'AudioObject', url: data.audio_url },
-      url: window.location.href
+      url: canonicalUrl
     })
     document.head.appendChild(script)
-  }
-
-  function setMeta(name, content, isProperty = false) {
-    const attr = isProperty ? 'property' : 'name'
-    let tag = document.querySelector(`meta[${attr}="${name}"]`)
-    if (!tag) {
-      tag = document.createElement('meta')
-      tag.setAttribute(attr, name)
-      document.head.appendChild(tag)
-    }
-    tag.setAttribute('content', content)
   }
 
   async function togglePlay() {
@@ -226,7 +249,6 @@ export default function SongDetail() {
     if (audio.paused) {
       pauseAllOtherAudios(audio)
 
-      // ✅ Show spinner immediately
       setLoadingAudio(true)
       if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current)
       loadingTimerRef.current = setTimeout(() => setLoadingAudio(false), 20000)
@@ -235,7 +257,6 @@ export default function SongDetail() {
         audio.preload = 'auto'
         await audio.play()
 
-        // ✅ Count play only on fresh start
         if (audio.currentTime < 1) {
           trackPlay(song, (next) => {
             setSong((s) => ({ ...s, play_count: next }))
@@ -359,7 +380,6 @@ export default function SongDetail() {
               </div>
             </div>
 
-            {/* ✅ Custom player */}
             <div className="hc-song-player-wrap">
               <button
                 type="button"
@@ -418,7 +438,6 @@ export default function SongDetail() {
               </div>
             </div>
 
-            {/* Hidden audio element controlled by our UI */}
             <audio
               ref={audioRef}
               src={song.audio_url}

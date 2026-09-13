@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { trackPlay, trackDownload } from '../utils/counters'
+import { searchSongs } from '../utils/search'
 import TrackCard from '../components/TrackCard'
 
 export default function Home() {
@@ -54,15 +55,8 @@ export default function Home() {
   const getArtistName = (row) =>
     row?.artist_name || row?.artists?.artist_name || 'Unknown Artist'
 
-  const q = search.toLowerCase().trim()
-  const filteredSongs = q
-    ? songs.filter(
-        (s) =>
-          s.title?.toLowerCase().includes(q) ||
-          s.genre?.toLowerCase().includes(q) ||
-          getArtistName(s).toLowerCase().includes(q)
-      )
-    : songs
+  // ✅ Fuzzy search across title, artist, genre, slug
+  const filteredSongs = searchSongs(songs, search, getArtistName)
 
   if (loading) {
     return (

@@ -8,6 +8,8 @@ import Login from './pages/Login'
 import Upload from './pages/Upload'
 import About from './pages/About'
 import Support from './pages/Support'
+import Search from './pages/Search'
+import Genre from './pages/Genre'
 import hitlogo from './img/hitlogo.png'
 
 // Lazy-loaded pages (code-split, smaller initial bundle)
@@ -66,6 +68,9 @@ export default function App() {
         </NavLink>
 
         <nav className="hc-sidebar-nav">
+          <NavLink to="/search" className="hc-sidebar-link">
+             <i className="fas fa-search"></i> Search
+          </NavLink>
           <NavLink to="/" end className="hc-sidebar-link">Discover</NavLink>
           <NavLink to="/songs" className="hc-sidebar-link">Songs</NavLink>
           {user && <NavLink to="/upload" className="hc-sidebar-link">Upload</NavLink>}
@@ -128,6 +133,8 @@ export default function App() {
             <Route path="/subscription" element={<Subscription />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/song/:id" element={<SongDetail />} />
+            <Route path="/search" element={<Search />} />
+            <Route path="/genre/:slug" element={<Genre />} />
           </Routes>
         </Suspense>
       </main>
