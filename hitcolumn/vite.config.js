@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import Sitemap from 'vite-plugin-sitemap'
 
 export default defineConfig({
   plugins: [
@@ -83,19 +82,6 @@ export default defineConfig({
           }
         ]
       }
-    }),
-    Sitemap({
-      hostname: 'https://hitcolumn.vercel.app',
-      dynamicRoutes: [
-        '/songs',
-        '/search',
-        '/about',
-        '/support',
-        '/subscription'
-      ],
-      changefreq: 'weekly',
-      priority: 0.8,
-      outDir: 'dist'
     })
   ]
 })

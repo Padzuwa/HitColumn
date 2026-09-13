@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://hitcolumn.vercel.app/sitemap.xml
 Sitemap: https://hitcolumn.vercel.app/api/sitemap
