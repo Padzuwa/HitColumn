@@ -11,10 +11,10 @@ export default function Home() {
   const [user, setUser] = useState(null)
   const [search, setSearch] = useState('')
   const [settings, setSettings] = useState({
-  hero_title: 'HitColumn',
-  hero_subtitle: 'The platform for artists to share their sound with the world.',
-  hero_badge: 'Where hits are uploaded'
-})
+    hero_title: 'HitColumn',
+    hero_subtitle: 'The platform for artists to share their sound with the world.',
+    hero_badge: 'Where hits are uploaded'
+  })
 
   useEffect(() => {
     async function fetchLatestSongs() {
@@ -29,25 +29,23 @@ export default function Home() {
       setLoading(false)
     }
 
-    async function fetchSettings() {
-  const { data } = await supabase
-    .from('site_settings')
-    .select('*')
-    .eq('id', 1)
-    .maybeSingle()
-  if (data) setSettings(data)
-}
-
-fetchLatestSongs()
-fetchUser()
-fetchSettings()   // ✅ add this
     async function fetchUser() {
       const { data } = await supabase.auth.getUser()
       setUser(data.user)
     }
 
+    async function fetchSettings() {
+      const { data } = await supabase
+        .from('site_settings')
+        .select('*')
+        .eq('id', 1)
+        .maybeSingle()
+      if (data) setSettings(data)
+    }
+
     fetchLatestSongs()
     fetchUser()
+    fetchSettings()
   }, [])
 
   function handlePlay(song) {
@@ -72,7 +70,6 @@ fetchSettings()   // ✅ add this
   const getArtistName = (row) =>
     row?.artist_name || row?.artists?.artist_name || 'Unknown Artist'
 
-  // ✅ Fuzzy search across title, artist, genre, slug
   const filteredSongs = searchSongs(songs, search, getArtistName)
 
   if (loading) {
@@ -90,10 +87,14 @@ fetchSettings()   // ✅ add this
     <div className="hc-container">
       <section className="hc-hero" style={{ marginTop: '2rem' }}>
         <div className="hc-hero-content">
-          <span className="hc-eyebrow">Where hits are uploaded</span>
-          <h1 className="hc-display">HitColumn</h1>
+          {/* ✅ Now driven by site_settings */}
+          {settings.hero_badge && (
+            <span className="hc-eyebrow">{settings.hero_badge}</span>
+          )}
+          <h1 className="hc-display">{settings.hero_title || 'HitColumn'}</h1>
           <p className="hc-muted" style={{ maxWidth: '520px', fontSize: '1.1rem' }}>
-            The platform for artists to share their sound with the world.
+            {settings.hero_subtitle ||
+              'The platform for artists to share their sound with the world.'}
           </p>
 
           <div className="hc-hero-search">
@@ -209,7 +210,10 @@ fetchSettings()   // ✅ add this
           <h2 className="hc-section-title" style={{ marginTop: '0.5rem' }}>
             Built for both Upcoming Artists & Established Musicians, Loved by Fans
           </h2>
-          <p className="hc-muted" style={{ maxWidth: '600px', margin: '0 auto 1.5rem' }}>
+          <p
+            className="hc-muted"
+            style={{ maxWidth: '600px', margin: '0 auto 1.5rem' }}
+          >
             Upload your first 3 songs for free. Get discovered by fans across
             Malawi and beyond. No complicated setup — just your music, your way.
           </p>
