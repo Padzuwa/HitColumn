@@ -13,6 +13,13 @@ export default function Admin() {
   const [limits, setLimits] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [settings, setSettings] = useState({
+    hero_title: '',
+    hero_subtitle: '',
+    hero_badge: ''
+  })
+  const [savingSettings, setSavingSettings] = useState(false)
+  const [settingsMsg, setSettingsMsg] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -36,7 +43,7 @@ export default function Admin() {
   }, [navigate])
 
   async function loadAll() {
-    const [s, a, m, sub, l] = await Promise.all([
+    const [s, a, m, sub, l, settingsRes] = await Promise.all([
       supabase
         .from('songs')
         .select('*, artists:artist_id (artist_name)')
@@ -47,13 +54,15 @@ export default function Admin() {
         .from('subscriptions')
         .select('*, artists:artist_id (artist_name)')
         .order('created_at', { ascending: false }),
-      supabase.from('upload_limits').select('*')
+      supabase.from('upload_limits').select('*'),
+      supabase.from('site_settings').select('*').eq('id', 1).maybeSingle()
     ])
     setSongs(s.data || [])
     setArtists(a.data || [])
     setMessages(m.data || [])
     setSubs(sub.data || [])
     setLimits(l.data || [])
+    if (settingsRes.data) setSettings(settingsRes.data)
   }
 
   async function toggleSongStatus(song) {
@@ -105,11 +114,33 @@ export default function Admin() {
     }
   }
 
-  // ✅ ADD THIS — was missing and would crash on delete click
   async function deleteSub(id) {
     if (!confirm('Delete this subscription request permanently?')) return
     const { error } = await supabase.from('subscriptions').delete().eq('id', id)
     if (!error) setSubs((prev) => prev.filter((s) => s.id !== id))
+  }
+
+  async function saveSettings() {
+    setSavingSettings(true)
+    setSettingsMsg('')
+
+    const { error } = await supabase
+      .from('site_settings')
+      .update({
+        hero_title: settings.hero_title,
+        hero_subtitle: settings.hero_subtitle,
+        hero_badge: settings.hero_badge,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', 1)
+
+    if (error) {
+      setSettingsMsg('Error: ' + error.message)
+    } else {
+      setSettingsMsg('Saved! Home page updated.')
+      setTimeout(() => setSettingsMsg(''), 3000)
+    }
+    setSavingSettings(false)
   }
 
   if (loading) {
@@ -131,7 +162,8 @@ export default function Admin() {
     { id: 'songs', label: 'Songs', icon: 'fas fa-music' },
     { id: 'artists', label: 'Artists', icon: 'fas fa-users' },
     { id: 'messages', label: 'Messages', icon: 'fas fa-envelope' },
-    { id: 'subscriptions', label: 'Subscriptions', icon: 'fas fa-crown' }
+    { id: 'subscriptions', label: 'Subscriptions', icon: 'fas fa-crown' },
+    { id: 'settings', label: 'Site Settings', icon: 'fas fa-pen-to-square' }
   ]
 
   const getArtistName = (row) =>
@@ -240,6 +272,9 @@ export default function Admin() {
                   </button>
                   <button className="hc-btn hc-btn-secondary" onClick={() => setTab('messages')}>
                     <i className="fas fa-envelope"></i> Messages
+                  </button>
+                  <button className="hc-btn hc-btn-secondary" onClick={() => setTab('settings')}>
+                    <i className="fas fa-pen-to-square"></i> Edit Hero
                   </button>
                 </div>
               </div>
@@ -516,6 +551,117 @@ export default function Admin() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {tab === 'settings' && (
+            <div className="hc-card hc-card-pad">
+              <h3
+                className="hc-section-title"
+                style={{ fontSize: '1.2rem', marginBottom: '1rem' }}
+              >
+                <i className="fas fa-pen-to-square" style={{ color: 'var(--hc-brand)' }}></i>{' '}
+                Home Hero Content
+              </h3>
+
+              <p className="hc-muted" style={{ marginBottom: '1.5rem' }}>
+                These words appear at the top of the Home page. Use them to announce
+                new releases, updates, or promotions.
+              </p>
+
+              {settingsMsg && (
+                <div
+                  className={`hc-badge ${
+                    settingsMsg.startsWith('Error')
+                      ? 'hc-badge-live'
+                      : 'hc-badge-success'
+                  }`}
+                  style={{ marginBottom: '1rem' }}
+                >
+                  {settingsMsg}
+                </div>
+              )}
+
+              <div className="hc-form-grid">
+                <div className="hc-field hc-field-full">
+                  <label className="hc-label">Hero Badge (small text above title)</label>
+                  <input
+                    className="hc-input"
+                    type="text"
+                    placeholder="Where hits are uploaded"
+                    value={settings.hero_badge || ''}
+                    onChange={(e) =>
+                      setSettings((s) => ({ ...s, hero_badge: e.target.value }))
+                    }
+                    maxLength={60}
+                  />
+                  <p className="hc-small hc-muted" style={{ marginTop: '4px' }}>
+                    {(settings.hero_badge || '').length}/60 characters
+                  </p>
+                </div>
+
+                <div className="hc-field hc-field-full">
+                  <label className="hc-label">Hero Title</label>
+                  <input
+                    className="hc-input"
+                    type="text"
+                    placeholder="HitColumn"
+                    value={settings.hero_title || ''}
+                    onChange={(e) =>
+                      setSettings((s) => ({ ...s, hero_title: e.target.value }))
+                    }
+                    maxLength={80}
+                  />
+                  <p className="hc-small hc-muted" style={{ marginTop: '4px' }}>
+                    {(settings.hero_title || '').length}/80 characters
+                  </p>
+                </div>
+
+                <div className="hc-field hc-field-full">
+                  <label className="hc-label">Hero Subtitle / Update message</label>
+                  <textarea
+                    className="hc-textarea"
+                    placeholder="The platform for artists to share their sound with the world."
+                    value={settings.hero_subtitle || ''}
+                    onChange={(e) =>
+                      setSettings((s) => ({ ...s, hero_subtitle: e.target.value }))
+                    }
+                    maxLength={280}
+                    rows={4}
+                  />
+                  <p className="hc-small hc-muted" style={{ marginTop: '4px' }}>
+                    {(settings.hero_subtitle || '').length}/280 characters
+                  </p>
+                </div>
+              </div>
+
+              <button
+                className="hc-btn hc-btn-primary"
+                onClick={saveSettings}
+                disabled={savingSettings}
+                style={{ marginTop: '1.5rem' }}
+              >
+                <i className="fas fa-save"></i>{' '}
+                {savingSettings ? 'Saving...' : 'Save & Publish'}
+              </button>
+
+              <div
+                className="hc-card hc-card-pad"
+                style={{
+                  marginTop: '2rem',
+                  background:
+                    'linear-gradient(135deg, var(--hc-brand-soft), transparent)'
+                }}
+              >
+                <span className="hc-eyebrow">Preview</span>
+                <h2 className="hc-section-title" style={{ marginTop: '0.5rem' }}>
+                  {settings.hero_title || 'HitColumn'}
+                </h2>
+                <p className="hc-muted" style={{ marginTop: '0.5rem' }}>
+                  {settings.hero_subtitle ||
+                    'The platform for artists to share their sound with the world.'}
+                </p>
+              </div>
             </div>
           )}
         </div>

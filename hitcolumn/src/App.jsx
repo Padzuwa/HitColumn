@@ -12,7 +12,6 @@ import Search from './pages/Search'
 import Genre from './pages/Genre'
 import hitlogo from './img/hitlogo.png'
 
-// Lazy-loaded pages (code-split, smaller initial bundle)
 const Admin = lazy(() => import('./pages/Admin'))
 const Subscription = lazy(() => import('./pages/Subscription'))
 const SongDetail = lazy(() => import('./pages/SongDetail'))
@@ -62,37 +61,56 @@ export default function App() {
 
   return (
     <div className="hc-app">
+      {/* ✅ SIDEBAR — closes before <main> */}
       <aside className="hc-sidebar">
         <NavLink to="/" className="hc-brand" end>
           <img src={hitlogo} alt="HitColumn" className="hc-brand-logo" />
         </NavLink>
 
-        <nav className="hc-sidebar-nav">
-          <NavLink to="/search" className="hc-sidebar-link">
-             <i className="fas fa-search"></i> Search
-          </NavLink>
-          <NavLink to="/" end className="hc-sidebar-link">Discover</NavLink>
-          <NavLink to="/songs" className="hc-sidebar-link">Songs</NavLink>
-          {user && <NavLink to="/upload" className="hc-sidebar-link">Upload</NavLink>}
-          {user && <NavLink to="/subscription" className="hc-sidebar-link">Upgrade</NavLink>}
-          {isAdmin && (
-            <NavLink to="/admin" className="hc-sidebar-link">
-              <i className="fas fa-shield-halved"></i> Admin
-            </NavLink>
-          )}
-          <NavLink to="/about" className="hc-sidebar-link hc-only-mobile">About</NavLink>
-          <NavLink to="/support" className="hc-sidebar-link hc-only-mobile">Support</NavLink>
-          {user ? (
-            <button className="hc-sidebar-link" onClick={handleLogout}>Logout</button>
-          ) : (
-            <NavLink to="/login" className="hc-sidebar-link">Login</NavLink>
-          )}
-          <button className="hc-sidebar-link" onClick={toggleTheme}>
-            {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-          </button>
-        </nav>
+     <nav className="hc-sidebar-nav">
+  <NavLink to="/" end className="hc-sidebar-link">
+    <i className="fas fa-compass"></i> Discover
+  </NavLink>
+  <NavLink to="/songs" className="hc-sidebar-link">
+    <i className="fas fa-music"></i> Songs
+  </NavLink>
+  <NavLink to="/search" className="hc-sidebar-link">
+    <i className="fas fa-search"></i> Search
+  </NavLink>
+  {user && (
+    <NavLink to="/upload" className="hc-sidebar-link">
+      <i className="fas fa-upload"></i> Upload
+    </NavLink>
+  )}
+  {user && !isAdmin && (
+    <NavLink to="/subscription" className="hc-sidebar-link">
+      <i className="fas fa-crown"></i> Upgrade
+    </NavLink>
+  )}
+  {isAdmin && (
+    <NavLink to="/admin" className="hc-sidebar-link">
+      <i className="fas fa-shield-halved"></i> Admin
+    </NavLink>
+  )}
+  <NavLink to="/about" className="hc-sidebar-link hc-only-mobile">About</NavLink>
+  <NavLink to="/support" className="hc-sidebar-link hc-only-mobile">Support</NavLink>
+  {user ? (
+    <button className="hc-sidebar-link" onClick={handleLogout}>
+      <i className="fas fa-sign-out-alt"></i> Logout
+    </button>
+  ) : (
+    <NavLink to="/login" className="hc-sidebar-link">
+      <i className="fas fa-sign-in-alt"></i> Login
+    </NavLink>
+  )}
+  <button className="hc-sidebar-link" onClick={toggleTheme}>
+    <i className={`fas ${theme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
+    {theme === 'dark' ? ' Light Mode' : ' Dark Mode'}
+  </button>
+</nav>
       </aside>
 
+      {/* ✅ MAIN — sibling of sidebar */}
       <main className="hc-main">
         <header className="hc-topbar">
           <div className="hc-topbar-left">
@@ -104,7 +122,9 @@ export default function App() {
                 </div>
                 <div className="hc-profile-info">
                   <span className="hc-profile-name">{artist.artist_name}</span>
-                  <span className="hc-profile-role">{isAdmin ? 'Admin' : 'Artist'}</span>
+                  <span className="hc-profile-role">
+                    {isAdmin ? 'Admin' : 'Artist'}
+                  </span>
                 </div>
               </div>
             )}

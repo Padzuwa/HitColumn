@@ -5,7 +5,6 @@ import { supabase } from '../supabaseClient'
 const MAX_AUDIO_MB = 12
 const MAX_COVER_MB = 2
 
-// ✅ Compress cover image before upload (prevents low-memory crashes)
 function compressImage(file, maxSize = 800) {
   return new Promise((resolve) => {
     const img = new Image()
@@ -43,22 +42,36 @@ function compressImage(file, maxSize = 800) {
 export default function Upload() {
   const [title, setTitle] = useState('')
   const [genre, setGenre] = useState('Afrobeat')
+  const [artistNameOverride, setArtistNameOverride] = useState('')
   const [audioFile, setAudioFile] = useState(null)
   const [coverFile, setCoverFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const [checkingAuth, setCheckingAuth] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [ownArtistName, setOwnArtistName] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
+    async function check() {
+      const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) {
         navigate('/login')
-      } else {
-        setCheckingAuth(false)
+        return
       }
-    })
+
+      const { data: artist } = await supabase
+        .from('artists')
+        .select('artist_name, is_admin')
+        .eq('id', userData.user.id)
+        .single()
+
+      setOwnArtistName(artist?.artist_name || '')
+      setIsAdmin(artist?.is_admin === true)
+      setCheckingAuth(false)
+    }
+    check()
   }, [navigate])
 
   if (checkingAuth) {
@@ -76,7 +89,7 @@ export default function Upload() {
     setMessage('')
     setErrorMsg('')
 
-    // ✅ Validate file sizes before loading into memory
+    // Validate sizes
     if (!audioFile) {
       setErrorMsg('Please select an audio file.')
       setUploading(false)
@@ -86,7 +99,7 @@ export default function Upload() {
     const audioMB = audioFile.size / (1024 * 1024)
     if (audioMB > MAX_AUDIO_MB) {
       setErrorMsg(
-        `Audio is too large (${audioMB.toFixed(1)} MB). Max ${MAX_AUDIO_MB} MB. Please export as MP3 (not WAV).`
+        `Audio is too large (${audioMB.toFixed(1)} MB). Max ${MAX_AUDIO_MB} MB. Please export as MP3.`
       )
       setUploading(false)
       return
@@ -112,29 +125,28 @@ export default function Upload() {
 
     const user = userData.user
 
-    // Fetch artist name
-    const { data: artistRow } = await supabase
-      .from('artists')
-      .select('artist_name')
-      .eq('id', user.id)
-      .single()
+    // ✅ Decide final artist name
+    // Admins can override; regular artists use their own name
+    const finalArtistName = isAdmin && artistNameOverride.trim()
+      ? artistNameOverride.trim()
+      : ownArtistName || 'Unknown Artist'
 
-    const artistName = artistRow?.artist_name || 'Unknown Artist'
+    // Check upload limit (skip for admins)
+    if (!isAdmin) {
+      const { data: limitData, error: limitError } = await supabase
+        .from('upload_limits')
+        .select('uploads_used, max_uploads')
+        .eq('artist_id', user.id)
+        .single()
 
-    // Check upload limit
-    const { data: limitData, error: limitError } = await supabase
-      .from('upload_limits')
-      .select('uploads_used, max_uploads')
-      .eq('artist_id', user.id)
-      .single()
-
-    if (limitError || limitData.uploads_used >= limitData.max_uploads) {
-      setErrorMsg('Upload limit reached. Contact admin to upgrade.')
-      setUploading(false)
-      return
+      if (limitError || limitData.uploads_used >= limitData.max_uploads) {
+        setErrorMsg('Upload limit reached. Contact admin to upgrade.')
+        setUploading(false)
+        return
+      }
     }
 
-    // ✅ Upload audio
+    // Upload audio
     const audioName = `${user.id}/${Date.now()}-${audioFile.name}`
     const { data: audioData, error: audioError } = await supabase.storage
       .from('songs')
@@ -146,7 +158,7 @@ export default function Upload() {
       return
     }
 
-    // ✅ Compress + upload cover
+    // Compress + upload cover
     let coverUrl = null
     if (coverFile) {
       try {
@@ -160,24 +172,25 @@ export default function Upload() {
           coverUrl = supabase.storage.from('songs').getPublicUrl(coverData.path).data.publicUrl
         }
       } catch (err) {
-        console.error('Cover compression failed, skipping cover:', err)
+        console.error('Cover compression failed:', err)
       }
     }
 
-    const audioUrl = supabase.storage.from('songs').getPublicUrl(audioData.path).data.publicUrl
+    const audioUrl = supabase.storage
+      .from('songs')
+      .getPublicUrl(audioData.path).data.publicUrl
 
-    // Generate slug
+    // Slug
     const slugBase = title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
-
     const uniqueSlug = `${slugBase}-${Date.now().toString(36).slice(-6)}`
 
-    // Insert song record
+    // ✅ Insert with the correct artist name
     const { error: insertError } = await supabase.from('songs').insert({
-      artist_id: user.id,
-      artist_name: artistName,
+      artist_id: user.id,          // still links to the uploader
+      artist_name: finalArtistName, // ✅ what shows on the card
       title,
       genre,
       audio_url: audioUrl,
@@ -189,14 +202,28 @@ export default function Upload() {
     if (insertError) {
       setErrorMsg('Failed to save song: ' + insertError.message)
     } else {
-      await supabase
-        .from('upload_limits')
-        .update({ uploads_used: limitData.uploads_used + 1 })
-        .eq('artist_id', user.id)
+      // Only bump upload counter for non-admins
+      if (!isAdmin) {
+        const { data: limitData } = await supabase
+          .from('upload_limits')
+          .select('uploads_used')
+          .eq('artist_id', user.id)
+          .single()
 
-      setMessage('Song uploaded successfully!')
+        await supabase
+          .from('upload_limits')
+          .update({ uploads_used: (limitData?.uploads_used || 0) + 1 })
+          .eq('artist_id', user.id)
+      }
+
+      setMessage(
+        isAdmin
+          ? `Song uploaded as "${finalArtistName}".`
+          : 'Song uploaded successfully!'
+      )
       setTitle('')
       setGenre('Afrobeat')
+      setArtistNameOverride('')
       setAudioFile(null)
       setCoverFile(null)
     }
@@ -208,7 +235,11 @@ export default function Upload() {
     <div className="hc-container">
       <section className="hc-section" style={{ maxWidth: '680px' }}>
         <h1 className="hc-section-title">Upload Song</h1>
-        <p className="hc-muted">You get 3 free uploads. Use them wisely.</p>
+        <p className="hc-muted">
+          {isAdmin
+            ? 'Admin mode — you can upload on behalf of any artist. No upload limit applies.'
+            : 'You get 3 free uploads. Use them wisely.'}
+        </p>
 
         {message && (
           <div className="hc-badge hc-badge-success" style={{ marginTop: '1rem' }}>
@@ -239,6 +270,25 @@ export default function Upload() {
               />
             </div>
 
+            {/* ✅ Admin-only artist name override */}
+            {isAdmin && (
+              <div className="hc-field hc-field-full">
+                <label className="hc-label">
+                  Artist Name{' '}
+                  <span className="hc-small hc-muted">
+                    (admin only — leave blank to use your own name: {ownArtistName})
+                  </span>
+                </label>
+                <input
+                  className="hc-input"
+                  type="text"
+                  placeholder={`e.g. John Leackson — blank = ${ownArtistName || 'your name'}`}
+                  value={artistNameOverride}
+                  onChange={(e) => setArtistNameOverride(e.target.value)}
+                />
+              </div>
+            )}
+
             <div className="hc-field hc-field-full">
               <label className="hc-label">Genre</label>
               <select
@@ -266,7 +316,7 @@ export default function Upload() {
                 required
               />
               <p className="hc-small hc-muted" style={{ marginTop: '4px' }}>
-                Max {MAX_AUDIO_MB} MB. Export as MP3 (not WAV) for best results.
+                Max {MAX_AUDIO_MB} MB. Export as MP3 (not WAV).
               </p>
             </div>
 
@@ -280,8 +330,7 @@ export default function Upload() {
                 onChange={(e) => setCoverFile(e.target.files[0])}
               />
               <p className="hc-small hc-muted" style={{ marginTop: '4px' }}>
-                JPG or PNG, max {MAX_COVER_MB} MB. Large images are auto-compressed to save
-                memory.
+                JPG or PNG, max {MAX_COVER_MB} MB. Auto-compressed on upload.
               </p>
             </div>
           </div>
@@ -304,16 +353,10 @@ export default function Upload() {
           </h3>
           <p className="hc-muted">For business inquiries, support, or partnerships.</p>
           <div className="hc-footer-links">
-            <a
-              href="mailto:peazydesun@gmail.com"
-              className="hc-btn hc-btn-secondary"
-            >
+            <a href="mailto:peazydesun@gmail.com" className="hc-btn hc-btn-secondary">
               <i className="fas fa-envelope"></i> peazydesun@gmail.com
             </a>
-            <a
-              href="tel:+265992404606"
-              className="hc-btn hc-btn-secondary"
-            >
+            <a href="tel:+265992404606" className="hc-btn hc-btn-secondary">
               <i className="fas fa-phone"></i> +265 992 404 606
             </a>
             <a
@@ -325,9 +368,6 @@ export default function Upload() {
               <i className="fab fa-whatsapp"></i> WhatsApp
             </a>
           </div>
-          <p className="hc-small hc-muted" style={{ marginTop: '1.5rem' }}>
-            &copy; 2026 HitColumn. All rights reserved.
-          </p>
         </div>
       </footer>
     </div>

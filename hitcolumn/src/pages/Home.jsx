@@ -10,6 +10,11 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
   const [search, setSearch] = useState('')
+  const [settings, setSettings] = useState({
+  hero_title: 'HitColumn',
+  hero_subtitle: 'The platform for artists to share their sound with the world.',
+  hero_badge: 'Where hits are uploaded'
+})
 
   useEffect(() => {
     async function fetchLatestSongs() {
@@ -24,6 +29,18 @@ export default function Home() {
       setLoading(false)
     }
 
+    async function fetchSettings() {
+  const { data } = await supabase
+    .from('site_settings')
+    .select('*')
+    .eq('id', 1)
+    .maybeSingle()
+  if (data) setSettings(data)
+}
+
+fetchLatestSongs()
+fetchUser()
+fetchSettings()   // ✅ add this
     async function fetchUser() {
       const { data } = await supabase.auth.getUser()
       setUser(data.user)
