@@ -9,6 +9,7 @@ import Upload from './pages/Upload'
 import About from './pages/About'
 import Support from './pages/Support'
 import Search from './pages/Search'
+const Artist = lazy(() => import('./pages/Artist'))
 import Genre from './pages/Genre'
 import hitlogo from './img/hitlogo.png'
 
@@ -155,6 +156,7 @@ export default function App() {
             <Route path="/song/:id" element={<SongDetail />} />
             <Route path="/search" element={<Search />} />
             <Route path="/genre/:slug" element={<Genre />} />
+            <Route path="/artist/:slug" element={<Artist />} />
           </Routes>
         </Suspense>
       </main>

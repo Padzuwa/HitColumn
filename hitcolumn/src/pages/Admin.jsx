@@ -408,7 +408,11 @@ export default function Admin() {
 
                     return (
                       <tr key={a.id}>
-                        <td className="hc-td-strong">{a.artist_name}</td>
+                        <td className="hc-td-strong">
+                              <Link to={`/artist/${a.id}`} className="hc-artist-link">
+                                    {a.artist_name}
+                                </Link>
+                          </td>
                         <td>{a.email || '—'}</td>
                         <td>
                           {a.is_admin ? (

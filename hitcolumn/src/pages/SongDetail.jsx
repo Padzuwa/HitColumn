@@ -17,7 +17,6 @@ function pauseAllOtherAudios(except) {
   })
 }
 
-// ✅ Canonical link helper (uses <link>, not <meta>)
 function setCanonical(href) {
   let tag = document.querySelector('link[rel="canonical"]')
   if (!tag) {
@@ -202,19 +201,14 @@ export default function SongDetail() {
     const slug = data.slug || data.id
     const canonicalUrl = `https://hitcolumn.vercel.app/song/${slug}`
 
-    // ✅ Title
     document.title = `${data.title} – ${artistName} | HitColumn`
-
-    // ✅ Canonical (uses <link>, not <meta>)
     setCanonical(canonicalUrl)
 
-    // ✅ Standard meta
     setMeta(
       'description',
       `Listen to ${data.title} by ${artistName} on HitColumn. Free streaming and download.`
     )
 
-    // ✅ Open Graph
     setMeta('og:title', `${data.title} – ${artistName}`, true)
     setMeta('og:description', `Stream and download ${data.title} free on HitColumn.`, true)
     setMeta('og:image', data.cover_url || '', true)
@@ -222,7 +216,6 @@ export default function SongDetail() {
     setMeta('og:audio', data.audio_url, true)
     setMeta('og:url', canonicalUrl, true)
 
-    // ✅ JSON-LD for Google
     const existing = document.getElementById('song-jsonld')
     if (existing) existing.remove()
 
@@ -367,8 +360,16 @@ export default function SongDetail() {
           <div className="hc-song-meta">
             <span className="hc-tag">{song.genre || 'Music'}</span>
             <h1 className="hc-song-title">{song.title}</h1>
+
+            {/* ✅ Artist name is now clickable */}
             <p className="hc-song-artist">
-              by <strong>{getArtistName(song)}</strong>
+              by{' '}
+              <Link
+                to={`/artist/${song.artist_id}`}
+                className="hc-artist-link"
+              >
+                <strong>{getArtistName(song)}</strong>
+              </Link>
             </p>
 
             <div className="hc-song-stats">

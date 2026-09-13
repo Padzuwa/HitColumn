@@ -1765,3 +1765,131 @@ img { display: block; max-width: 100%; }
     align-self: center;
   }
 }
+/* =========================================================
+   ARTIST PROFILE PAGE
+   ========================================================= */
+.hc-artist-hero {
+  position: relative;
+  margin-top: 2rem;
+  padding: clamp(24px, 4vw, 52px);
+  border-radius: var(--hc-radius-lg);
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(7, 11, 18, 0.55), rgba(7, 11, 18, 0.95)),
+    linear-gradient(135deg, var(--hc-brand-soft), transparent);
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--hc-border);
+}
+
+.hc-artist-hero-inner {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(20px, 4vw, 40px);
+  margin-top: 1rem;
+}
+
+.hc-artist-avatar {
+  width: clamp(96px, 14vw, 140px);
+  height: clamp(96px, 14vw, 140px);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--hc-brand), #e9c46a);
+  color: #fffaf2;
+  display: grid;
+  place-items: center;
+  font-family: var(--hc-font-display);
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 12px 40px rgba(211, 108, 66, 0.45);
+  border: 4px solid rgba(255, 255, 255, 0.08);
+}
+
+.hc-artist-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.hc-artist-name {
+  font-family: var(--hc-font-display);
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: var(--hc-text);
+  line-height: 1.05;
+  margin: 0;
+}
+
+.hc-artist-bio {
+  color: var(--hc-text-muted);
+  font-size: var(--hc-text-md);
+  line-height: 1.6;
+  max-width: 640px;
+  margin: 6px 0 0;
+}
+
+.hc-artist-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.hc-artist-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.hc-artist-actions .hc-btn {
+  min-height: 40px;
+  font-size: var(--hc-text-sm);
+}
+
+@media (max-width: 780px) {
+  .hc-artist-hero-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+  }
+
+  .hc-artist-avatar {
+    width: 96px;
+    height: 96px;
+    font-size: 2.5rem;
+  }
+
+  .hc-artist-actions .hc-btn {
+    flex: 1 1 45%;
+  }
+}
+
+@media (max-width: 480px) {
+  .hc-artist-actions .hc-btn {
+    flex: 1 1 100%;
+  }
+}
+
+/* Artist link on cards */
+.hc-artist-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.hc-artist-link:hover {
+  color: var(--hc-brand);
+}
+.hc-artist-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.hc-artist-link:hover {
+  color: var(--hc-brand);
+}

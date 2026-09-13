@@ -43,45 +43,44 @@ export default defineConfig({
           }
         ]
       },
-      workbox: {
-        skipWaiting: true,
-        clientsClaim: true,
-        cleanupOutdatedCaches: true,
-        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        globIgnores: ['**/hitlogo*.png', '**/darkbg*.jpg'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'hitcolumn-audio',
-              networkTimeoutSeconds: 8,
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 7
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          {
-            urlPattern: /\.(?:png|jpg|jpeg|svg|webp)$/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'hitcolumn-images',
-              expiration: {
-                maxEntries: 60,
-                maxAgeSeconds: 60 * 60 * 24 * 30
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
+     workbox: {
+  skipWaiting: true,
+  clientsClaim: true,
+  cleanupOutdatedCaches: true,
+  maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+  globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,svg,webp,woff2}'],
+  runtimeCaching: [
+    {
+      urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/.*/i,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'hitcolumn-audio',
+        networkTimeoutSeconds: 8,
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 60 * 60 * 24 * 7
+        },
+        cacheableResponse: {
+          statuses: [0, 200]
+        }
       }
+    },
+    {
+      urlPattern: /\.(?:png|jpg|jpeg|webp|svg)$/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'hitcolumn-images',
+        expiration: {
+          maxEntries: 60,
+          maxAgeSeconds: 60 * 60 * 24 * 30
+        },
+        cacheableResponse: {
+          statuses: [0, 200]
+        }
+      }
+    }
+  ]
+}
     })
   ]
 })

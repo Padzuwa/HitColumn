@@ -163,9 +163,17 @@ export default function TrackCard({
           <p className="hc-track-title">{song.title}</p>
         </Link>
 
-        <p className="hc-track-meta">
-          {artistName} • {song.genre}
-        </p>
+       <p className="hc-track-meta">
+  <Link
+    to={`/artist/${song.artist_id}`}
+    className="hc-artist-link"
+    onClick={(e) => e.stopPropagation()}
+  >
+    {artistName}
+  </Link>
+  {' • '}
+  {song.genre}
+</p>
 
         <div className="hc-track-stats">
           <span>
