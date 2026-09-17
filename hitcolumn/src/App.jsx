@@ -10,6 +10,7 @@ import About from './pages/About'
 import Support from './pages/Support'
 import Search from './pages/Search'
 const Artist = lazy(() => import('./pages/Artist'))
+
 import Genre from './pages/Genre'
 import hitlogo from './img/hitlogo.png'
 
@@ -145,19 +146,19 @@ export default function App() {
           }
         >
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/songs" element={<Songs />} />
-            <Route path="/upload" element={<Upload />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/support" element={<Support />} />
-            <Route path="/subscription" element={<Subscription />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/song/:id" element={<SongDetail />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/genre/:slug" element={<Genre />} />
-            <Route path="/artist/:slug" element={<Artist />} />
-          </Routes>
+  <Route path="/" element={<Home />} />
+  <Route path="/songs" element={<Songs />} />
+  <Route path="/upload" element={<Upload />} />
+  <Route path="/login" element={<Login />} />
+  <Route path="/about" element={<About />} />
+  <Route path="/support" element={<Support />} />
+  <Route path="/subscription" element={<Subscription />} />
+  <Route path="/admin" element={<Admin />} />
+  <Route path="/song/:id" element={<SongDetail />} />
+  <Route path="/search" element={<Search />} />
+  <Route path="/genre/:slug" element={<Genre />} />
+  <Route path="/artist/:id" element={<Artist />} />
+</Routes>
         </Suspense>
       </main>
     </div>
