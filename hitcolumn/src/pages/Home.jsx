@@ -5,6 +5,8 @@ import { trackPlay, trackDownload } from '../utils/counters'
 import { searchSongs } from '../utils/search'
 import TrackCard from '../components/TrackCard'
 
+const LATEST_LIMIT = 5
+
 export default function Home() {
   const [songs, setSongs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -23,7 +25,7 @@ export default function Home() {
         .select('*, artists:artist_id (artist_name)')
         .eq('status', 'approved')
         .order('created_at', { ascending: false })
-        .limit(8)
+        .limit(LATEST_LIMIT)
 
       if (data) setSongs(data)
       setLoading(false)
@@ -85,14 +87,17 @@ export default function Home() {
 
   return (
     <div className="hc-container">
+      {/* Hero */}
       <section className="hc-hero" style={{ marginTop: '2rem' }}>
         <div className="hc-hero-content">
-          {/* ✅ Now driven by site_settings */}
           {settings.hero_badge && (
             <span className="hc-eyebrow">{settings.hero_badge}</span>
           )}
           <h1 className="hc-display">{settings.hero_title || 'HitColumn'}</h1>
-          <p className="hc-muted" style={{ maxWidth: '520px', fontSize: '1.1rem' }}>
+          <p
+            className="hc-muted"
+            style={{ maxWidth: '520px', fontSize: '1.1rem' }}
+          >
             {settings.hero_subtitle ||
               'The platform for artists to share their sound with the world.'}
           </p>
@@ -127,6 +132,7 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Latest Uploads / Search Results */}
       <section className="hc-section">
         <div
           style={{
@@ -191,12 +197,14 @@ export default function Home() {
                 getArtistName={getArtistName}
                 onPlay={handlePlay}
                 onDownload={handleDownload}
+                playlist={filteredSongs}
               />
             ))}
           </div>
         )}
       </section>
 
+      {/* Why HitColumn */}
       <section className="hc-section" style={{ paddingTop: '0' }}>
         <div
           className="hc-card hc-card-pad"
@@ -235,6 +243,68 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ✅ Upgrade Promo */}
+      <section className="hc-section" style={{ paddingTop: '0' }}>
+        <div className="hc-upgrade-promo">
+          <div className="hc-upgrade-promo-inner">
+            <div className="hc-upgrade-promo-badge">
+              <i className="fas fa-crown"></i>
+            </div>
+
+            <div className="hc-upgrade-promo-content">
+              <span className="hc-eyebrow">Level Up</span>
+              <h2 className="hc-upgrade-promo-title">
+                Upload More. Reach Further.
+              </h2>
+              <p className="hc-upgrade-promo-text">
+                Ran out of free uploads? Grab a plan and keep the hits coming.
+                From <strong>MWK 1,500</strong> — one-time, no subscriptions.
+              </p>
+
+              <div className="hc-upgrade-promo-plans">
+                <div className="hc-upgrade-promo-plan">
+                  <i className="fas fa-seedling"></i>
+                  <span>Starter</span>
+                  <strong>MWK 1,500</strong>
+                  <small>+1 upload</small>
+                </div>
+                <div className="hc-upgrade-promo-plan">
+                  <i className="fas fa-microphone-alt"></i>
+                  <span>Creator</span>
+                  <strong>MWK 3,000</strong>
+                  <small>+3 uploads</small>
+                </div>
+                <div className="hc-upgrade-promo-plan is-featured">
+                  <i className="fas fa-bolt"></i>
+                  <span>Pro</span>
+                  <strong>MWK 5,000</strong>
+                  <small>+5 uploads</small>
+                </div>
+                <div className="hc-upgrade-promo-plan">
+                  <i className="fas fa-crown"></i>
+                  <span>Studio</span>
+                  <strong>MWK 12,000</strong>
+                  <small>+15 uploads</small>
+                </div>
+              </div>
+
+              <div className="hc-upgrade-promo-actions">
+                <Link
+                  to={user ? '/subscription' : '/login'}
+                  className="hc-btn hc-btn-primary"
+                >
+                  <i className="fas fa-arrow-up-right-from-square"></i> View Plans
+                </Link>
+                <Link to="/support" className="hc-btn hc-btn-ghost">
+                  <i className="fas fa-circle-question"></i> Questions?
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
       <footer className="hc-footer">
         <div className="hc-footer-content">
           <h3 className="hc-section-title" style={{ fontSize: '1.3rem' }}>
@@ -244,11 +314,14 @@ export default function Home() {
             For business inquiries, support, or partnerships.
           </p>
           <div className="hc-footer-links">
-            <a href="mailto:peazydesun@gmail.com" className="hc-btn hc-btn-secondary">
+            <a
+              href="mailto:peazydesun@gmail.com"
+              className="hc-btn hc-btn-secondary"
+            >
               <i className="fas fa-envelope"></i> peazydesun@gmail.com
             </a>
             <a href="tel:+265992404606" className="hc-btn hc-btn-secondary">
-              <i className="fas fa-phone"></i> +265 992 404 606
+              <i class="fas fa-phone"></i> +265 992 404 606
             </a>
             <a
               href="https://wa.me/265992404606"

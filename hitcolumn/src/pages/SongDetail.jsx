@@ -1,21 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { trackPlay, trackDownload } from '../utils/counters'
+import { usePlayer } from '../context/PlayerContext'
 
 const RADIUS = 34
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
-
-function pauseAllOtherAudios(except) {
-  document.querySelectorAll('audio').forEach((el) => {
-    if (el !== except && !el.paused) {
-      try {
-        el.pause()
-        el.currentTime = 0
-      } catch (e) {}
-    }
-  })
-}
 
 function setCanonical(href) {
   let tag = document.querySelector('link[rel="canonical"]')
@@ -35,13 +25,22 @@ export default function SongDetail() {
   const [loading, setLoading] = useState(true)
   const [errorMsg, setErrorMsg] = useState('')
   const [copied, setCopied] = useState(false)
-  const [playing, setPlaying] = useState(false)
-  const [loadingAudio, setLoadingAudio] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const audioRef = useRef(null)
-  const loadingTimerRef = useRef(null)
+
+  // ✅ Global player
+  const {
+    currentSong,
+    isPlaying,
+    loading: loadingAudio,
+    currentTime,
+    duration,
+    play,
+    seek
+  } = usePlayer()
+
+  const isCurrent = currentSong?.id === song?.id
+  const isThisPlaying = isCurrent && isPlaying
+  const isThisLoading = isCurrent && loadingAudio && !isPlaying
+  const progress = isCurrent && duration > 0 ? (currentTime / duration) * 100 : 0
 
   // 1. Load song data
   useEffect(() => {
@@ -97,82 +96,6 @@ export default function SongDetail() {
 
     load()
   }, [id])
-
-  // 2. Audio event listeners
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-
-    const stopLoading = () => {
-      setLoadingAudio(false)
-      if (loadingTimerRef.current) {
-        clearTimeout(loadingTimerRef.current)
-        loadingTimerRef.current = null
-      }
-    }
-
-    const onPlay = () => setPlaying(true)
-    const onPlaying = () => stopLoading()
-    const onCanPlay = () => stopLoading()
-    const onPause = () => setPlaying(false)
-    const onEnded = () => {
-      setPlaying(false)
-      setProgress(0)
-      setCurrentTime(0)
-    }
-    const onWaiting = () => setLoadingAudio(true)
-    const onError = () => {
-      stopLoading()
-      setPlaying(false)
-    }
-    const onTimeUpdate = () => {
-      const audio = audioRef.current
-      if (!audio) return
-      setCurrentTime(audio.currentTime)
-      if (audio.duration && isFinite(audio.duration)) {
-        setDuration(audio.duration)
-        setProgress((audio.currentTime / audio.duration) * 100)
-      }
-    }
-    const onLoadedMetadata = () => {
-      const audio = audioRef.current
-      if (audio && audio.duration && isFinite(audio.duration)) {
-        setDuration(audio.duration)
-      }
-    }
-
-    audio.addEventListener('play', onPlay)
-    audio.addEventListener('playing', onPlaying)
-    audio.addEventListener('canplay', onCanPlay)
-    audio.addEventListener('pause', onPause)
-    audio.addEventListener('ended', onEnded)
-    audio.addEventListener('waiting', onWaiting)
-    audio.addEventListener('error', onError)
-    audio.addEventListener('timeupdate', onTimeUpdate)
-    audio.addEventListener('loadedmetadata', onLoadedMetadata)
-
-    return () => {
-      audio.removeEventListener('play', onPlay)
-      audio.removeEventListener('playing', onPlaying)
-      audio.removeEventListener('canplay', onCanPlay)
-      audio.removeEventListener('pause', onPause)
-      audio.removeEventListener('ended', onEnded)
-      audio.removeEventListener('waiting', onWaiting)
-      audio.removeEventListener('error', onError)
-      audio.removeEventListener('timeupdate', onTimeUpdate)
-      audio.removeEventListener('loadedmetadata', onLoadedMetadata)
-      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current)
-    }
-  }, [song])
-
-  // 3. Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (audioRef.current && !audioRef.current.paused) {
-        audioRef.current.pause()
-      }
-    }
-  }, [])
 
   function getArtistName(row) {
     return row?.artist_name || row?.artists?.artist_name || 'Unknown Artist'
@@ -235,43 +158,22 @@ export default function SongDetail() {
     document.head.appendChild(script)
   }
 
-  async function togglePlay() {
-    const audio = audioRef.current
-    if (!audio) return
-
-    if (audio.paused) {
-      pauseAllOtherAudios(audio)
-
-      setLoadingAudio(true)
-      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current)
-      loadingTimerRef.current = setTimeout(() => setLoadingAudio(false), 20000)
-
-      try {
-        audio.preload = 'auto'
-        await audio.play()
-
-        if (audio.currentTime < 1) {
-          trackPlay(song, (next) => {
-            setSong((s) => ({ ...s, play_count: next }))
-          })
-        }
-      } catch (err) {
-        console.error('Play failed:', err)
-        setLoadingAudio(false)
-      }
-    } else {
-      audio.pause()
+  function handlePlayClick() {
+    // Count a fresh start only when this song isn't the current one
+    if (!isCurrent) {
+      trackPlay(song, (next) => {
+        setSong((s) => ({ ...s, play_count: next }))
+      })
     }
+    // Hand off to the global player (context handles play/pause toggle)
+    play(song, related.length > 0 ? [song, ...related] : [song])
   }
 
-  function seek(e) {
-    const audio = audioRef.current
-    if (!audio) return
+  function seekClick(e) {
+    if (!isCurrent) return
     const rect = e.currentTarget.getBoundingClientRect()
     const percent = (e.clientX - rect.left) / rect.width
-    if (audio.duration && isFinite(audio.duration)) {
-      audio.currentTime = percent * audio.duration
-    }
+    if (duration > 0) seek(percent * duration)
   }
 
   function handleDownload() {
@@ -339,7 +241,6 @@ export default function SongDetail() {
   }
 
   const strokeDashoffset = CIRCUMFERENCE - (progress / 100) * CIRCUMFERENCE
-  const showSpinner = loadingAudio && !playing
 
   return (
     <div className="hc-container">
@@ -361,7 +262,6 @@ export default function SongDetail() {
             <span className="hc-tag">{song.genre || 'Music'}</span>
             <h1 className="hc-song-title">{song.title}</h1>
 
-            {/* ✅ Artist name is now clickable */}
             <p className="hc-song-artist">
               by{' '}
               <Link
@@ -381,17 +281,24 @@ export default function SongDetail() {
               </div>
             </div>
 
+            {/* ✅ Player controls powered by global context */}
             <div className="hc-song-player-wrap">
               <button
                 type="button"
                 className={`hc-play-circle hc-play-circle-lg ${
-                  playing ? 'is-playing' : ''
-                } ${showSpinner ? 'is-loading' : ''}`}
-                onClick={togglePlay}
-                aria-label={playing ? 'Pause' : showSpinner ? 'Loading' : 'Play'}
-                aria-busy={showSpinner}
+                  isThisPlaying ? 'is-playing' : ''
+                } ${isThisLoading ? 'is-loading' : ''}`}
+                onClick={handlePlayClick}
+                aria-label={
+                  isThisPlaying ? 'Pause' : isThisLoading ? 'Loading' : 'Play'
+                }
+                aria-busy={isThisLoading}
               >
-                <svg className="hc-play-ring" viewBox="0 0 80 80" aria-hidden="true">
+                <svg
+                  className="hc-play-ring"
+                  viewBox="0 0 80 80"
+                  aria-hidden="true"
+                >
                   <circle
                     className="hc-play-ring-track"
                     cx="40"
@@ -410,21 +317,23 @@ export default function SongDetail() {
                   />
                 </svg>
 
-                {showSpinner ? (
+                {isThisLoading ? (
                   <span className="hc-play-spinner" aria-hidden="true"></span>
                 ) : (
-                  <i className={`fas ${playing ? 'fa-pause' : 'fa-play'}`}></i>
+                  <i
+                    className={`fas ${isThisPlaying ? 'fa-pause' : 'fa-play'}`}
+                  ></i>
                 )}
               </button>
 
               <div className="hc-player-timeline">
                 <div className="hc-player-times">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
+                  <span>{formatTime(isCurrent ? currentTime : 0)}</span>
+                  <span>{formatTime(isCurrent ? duration : 0)}</span>
                 </div>
                 <div
                   className="hc-player-track"
-                  onClick={seek}
+                  onClick={seekClick}
                   role="slider"
                   aria-label="Seek"
                   aria-valuemin={0}
@@ -438,14 +347,6 @@ export default function SongDetail() {
                 </div>
               </div>
             </div>
-
-            <audio
-              ref={audioRef}
-              src={song.audio_url}
-              preload="metadata"
-              crossOrigin="anonymous"
-              style={{ display: 'none' }}
-            />
 
             <div className="hc-song-actions">
               <a
@@ -491,7 +392,10 @@ export default function SongDetail() {
 
         {related.length > 0 && (
           <div style={{ marginTop: '3rem' }}>
-            <h2 className="hc-section-title" style={{ marginBottom: '1.5rem' }}>
+            <h2
+              className="hc-section-title"
+              style={{ marginBottom: '1.5rem' }}
+            >
               More {song.genre} songs
             </h2>
             <div className="hc-track-grid">
@@ -507,7 +411,10 @@ export default function SongDetail() {
                     ) : (
                       <i
                         className="fas fa-music"
-                        style={{ fontSize: '2.5rem', color: 'var(--hc-text-subtle)' }}
+                        style={{
+                          fontSize: '2.5rem',
+                          color: 'var(--hc-text-subtle)'
+                        }}
                       ></i>
                     )}
                   </div>

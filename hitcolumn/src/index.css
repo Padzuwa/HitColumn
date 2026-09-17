@@ -1893,3 +1893,392 @@ img { display: block; max-width: 100%; }
 .hc-artist-link:hover {
   color: var(--hc-brand);
 }
+/* =========================================================
+   PERSISTENT PLAYER BAR
+   ========================================================= */
+body.has-player .hc-main {
+  padding-bottom: 110px;
+}
+
+.hc-player-bar {
+  position: fixed;
+  left: calc(var(--hc-sidebar-width) + 16px);
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: var(--hc-radius-md);
+  background: rgba(16, 26, 37, 0.94);
+  border: 1px solid var(--hc-border-strong);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  animation: hc-slide-up 220ms ease;
+}
+
+@supports (background: color-mix(in srgb, red 50%, transparent)) {
+  .hc-player-bar {
+    background: color-mix(in srgb, var(--hc-player) 94%, transparent);
+  }
+}
+
+@keyframes hc-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.hc-player-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+}
+
+.hc-player-art {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--hc-surface-raised);
+  display: grid;
+  place-items: center;
+  color: var(--hc-brand);
+  flex-shrink: 0;
+}
+
+.hc-player-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hc-player-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hc-player-title {
+  font-weight: 700;
+  font-size: var(--hc-text-sm);
+  color: var(--hc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hc-player-artist {
+  font-size: var(--hc-text-xs);
+  color: var(--hc-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hc-player-center {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hc-player-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.hc-player-btn {
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  color: var(--hc-text);
+  cursor: pointer;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+  transition: background 180ms ease, color 180ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hc-player-btn:hover:not(:disabled) {
+  background: var(--hc-brand-soft);
+  color: var(--hc-brand);
+}
+
+.hc-player-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.hc-player-btn-main {
+  width: 44px;
+  height: 44px;
+  background: var(--hc-brand);
+  color: #fffaf2;
+  font-size: 1rem;
+}
+
+.hc-player-btn-main:hover {
+  background: var(--hc-brand-hover);
+  color: #fffaf2;
+}
+
+.hc-player-progress-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+}
+
+.hc-player-time {
+  font-size: 0.7rem;
+  color: var(--hc-text-muted);
+  font-family: var(--hc-mono, monospace);
+  text-align: center;
+}
+
+.hc-player-track {
+  height: 4px;
+  background: var(--hc-border);
+  border-radius: 999px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: height 150ms ease;
+}
+
+.hc-player-track:hover {
+  height: 6px;
+}
+
+.hc-player-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--hc-brand), #e9c46a);
+  border-radius: 999px;
+  transition: width 120ms linear;
+}
+
+.hc-player-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--hc-text-muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.hc-player-close:hover {
+  background: var(--hc-surface-hover);
+  color: var(--hc-text);
+}
+
+@media (max-width: 780px) {
+  body.has-player .hc-main {
+    padding-bottom: 150px;
+  }
+
+  .hc-player-bar {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'info close'
+      'center center';
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .hc-player-info { grid-area: info; }
+  .hc-player-center { grid-area: center; }
+  .hc-player-close { grid-area: close; }
+
+  .hc-player-art { width: 40px; height: 40px; }
+}
+/* =========================================================
+   UPGRADE PROMO (Home page)
+   ========================================================= */
+.hc-upgrade-promo {
+  position: relative;
+  border-radius: var(--hc-radius-lg);
+  overflow: hidden;
+  padding: clamp(28px, 5vw, 60px);
+  background:
+    linear-gradient(135deg,
+      rgba(211, 108, 66, 0.12),
+      rgba(233, 196, 106, 0.06)
+    );
+  border: 1px solid var(--hc-border);
+}
+
+.hc-upgrade-promo::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -20%;
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle,
+    rgba(211, 108, 66, 0.22),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.hc-upgrade-promo-inner {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(20px, 4vw, 40px);
+  z-index: 1;
+}
+
+.hc-upgrade-promo-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--hc-brand), #e9c46a);
+  color: #fffaf2;
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  box-shadow: 0 12px 30px rgba(211, 108, 66, 0.4);
+}
+
+.hc-upgrade-promo-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hc-upgrade-promo-title {
+  font-family: var(--hc-font-display);
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--hc-text);
+  margin: 8px 0 0;
+  line-height: 1.1;
+}
+
+.hc-upgrade-promo-text {
+  color: var(--hc-text-muted);
+  font-size: var(--hc-text-md);
+  margin: 12px 0 24px;
+  max-width: 560px;
+}
+
+.hc-upgrade-promo-plans {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.hc-upgrade-promo-plan {
+  background: var(--hc-surface);
+  border: 1px solid var(--hc-border);
+  border-radius: var(--hc-radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+
+.hc-upgrade-promo-plan:hover {
+  border-color: var(--hc-border-strong);
+  transform: translateY(-2px);
+}
+
+.hc-upgrade-promo-plan i {
+  color: var(--hc-brand);
+  font-size: 1.1rem;
+  margin-bottom: 2px;
+}
+
+.hc-upgrade-promo-plan span {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--hc-text-muted);
+  font-weight: 600;
+}
+
+.hc-upgrade-promo-plan strong {
+  font-family: var(--hc-font-display);
+  font-size: 1rem;
+  color: var(--hc-text);
+  font-weight: 700;
+}
+
+.hc-upgrade-promo-plan small {
+  font-size: 0.7rem;
+  color: var(--hc-text-subtle);
+}
+
+.hc-upgrade-promo-plan.is-featured {
+  border-color: var(--hc-brand);
+  background: linear-gradient(180deg, var(--hc-brand-soft), var(--hc-surface));
+  position: relative;
+}
+
+.hc-upgrade-promo-plan.is-featured::after {
+  content: 'POPULAR';
+  position: absolute;
+  top: -8px;
+  right: 10px;
+  padding: 2px 8px;
+  background: var(--hc-brand);
+  color: #fffaf2;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  border-radius: 999px;
+}
+
+.hc-upgrade-promo-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 780px) {
+  .hc-upgrade-promo-inner {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .hc-upgrade-promo-badge {
+    width: 56px;
+    height: 56px;
+    font-size: 1.4rem;
+  }
+
+  .hc-upgrade-promo-plans {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hc-upgrade-promo-actions .hc-btn {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 400px) {
+  .hc-upgrade-promo-plans {
+    grid-template-columns: 1fr;
+  }
+}

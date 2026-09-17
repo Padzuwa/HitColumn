@@ -1,149 +1,46 @@
-import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { usePlayer } from '../context/PlayerContext'
 
 const RADIUS = 26
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
-const LOADING_TIMEOUT_MS = 20000 // give up after 20s
-
-function pauseAllOtherAudios(except) {
-  document.querySelectorAll('audio').forEach((el) => {
-    if (el !== except && !el.paused) {
-      try {
-        el.pause()
-        el.currentTime = 0
-      } catch (e) {
-        /* ignore */
-      }
-    }
-  })
-}
 
 export default function TrackCard({
   song,
   onPlay,
   onDownload,
   songUrl,
-  getArtistName
+  getArtistName,
+  playlist
 }) {
-  const audioRef = useRef(null)
-  const loadingTimerRef = useRef(null)
-  const [playing, setPlaying] = useState(false)
-  const [loadingAudio, setLoadingAudio] = useState(false)
-  const [progress, setProgress] = useState(0)
+  const {
+    currentSong,
+    isPlaying,
+    loading,
+    currentTime,
+    duration,
+    play
+  } = usePlayer()
 
-  // ✅ Clear any pending timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current)
-    }
-  }, [])
+  const isCurrent = currentSong?.id === song.id
+  const isThisPlaying = isCurrent && isPlaying
+  const isThisLoading = isCurrent && loading && !isPlaying
 
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-
-    const stopLoading = () => {
-      setLoadingAudio(false)
-      if (loadingTimerRef.current) {
-        clearTimeout(loadingTimerRef.current)
-        loadingTimerRef.current = null
-      }
-    }
-
-    const handlePlay = () => {
-      pauseAllOtherAudios(audio)
-      setPlaying(true)
-      if (audio.currentTime < 1) onPlay?.(song)
-    }
-
-    const handlePlaying = () => {
-      // Playback has actually started
-      stopLoading()
-    }
-
-    const handleCanPlay = () => stopLoading()
-    const handlePause = () => setPlaying(false)
-    const handleEnded = () => {
-      setPlaying(false)
-      setProgress(0)
-      stopLoading()
-    }
-    const handleWaiting = () => setLoadingAudio(true)
-    const handleStalled = () => setLoadingAudio(true)
-    const handleError = () => {
-      stopLoading()
-      setPlaying(false)
-    }
-
-    const handleTimeUpdate = () => {
-      if (audio.duration && isFinite(audio.duration)) {
-        setProgress((audio.currentTime / audio.duration) * 100)
-      }
-    }
-
-    audio.addEventListener('play', handlePlay)
-    audio.addEventListener('playing', handlePlaying)
-    audio.addEventListener('canplay', handleCanPlay)
-    audio.addEventListener('pause', handlePause)
-    audio.addEventListener('ended', handleEnded)
-    audio.addEventListener('waiting', handleWaiting)
-    audio.addEventListener('stalled', handleStalled)
-    audio.addEventListener('error', handleError)
-    audio.addEventListener('timeupdate', handleTimeUpdate)
-
-    return () => {
-      audio.removeEventListener('play', handlePlay)
-      audio.removeEventListener('playing', handlePlaying)
-      audio.removeEventListener('canplay', handleCanPlay)
-      audio.removeEventListener('pause', handlePause)
-      audio.removeEventListener('ended', handleEnded)
-      audio.removeEventListener('waiting', handleWaiting)
-      audio.removeEventListener('stalled', handleStalled)
-      audio.removeEventListener('error', handleError)
-      audio.removeEventListener('timeupdate', handleTimeUpdate)
-    }
-  }, [song, onPlay])
-
-  async function togglePlay() {
-    const audio = audioRef.current
-    if (!audio) return
-
-    if (audio.paused) {
-      pauseAllOtherAudios(audio)
-
-      // ✅ Show spinner instantly — don't wait for the browser
-      setLoadingAudio(true)
-
-      // Safety timeout: if it takes too long, release the spinner
-      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current)
-      loadingTimerRef.current = setTimeout(() => {
-        setLoadingAudio(false)
-      }, LOADING_TIMEOUT_MS)
-
-      try {
-        // Set preload to auto so buffering starts early
-        audio.preload = 'auto'
-        await audio.play()
-      } catch (err) {
-        console.error('Play failed:', err)
-        setLoadingAudio(false)
-        if (loadingTimerRef.current) {
-          clearTimeout(loadingTimerRef.current)
-          loadingTimerRef.current = null
-        }
-      }
-    } else {
-      audio.pause()
-    }
-  }
-
-  const strokeDashoffset = CIRCUMFERENCE - (progress / 100) * CIRCUMFERENCE
   const link = songUrl ? songUrl(song) : `/song/${song.slug || song.id}`
   const artistName = getArtistName
     ? getArtistName(song)
     : song.artist_name || song.artists?.artist_name || 'Unknown Artist'
 
-  const showSpinner = loadingAudio && !playing
+  function handlePlayClick(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isCurrent) onPlay?.(song)
+    play(song, playlist || [song])
+  }
+
+  // Ring shows progress only for the active song
+  const progress =
+    isCurrent && duration > 0 ? (currentTime / duration) * 100 : 0
+  const strokeDashoffset = CIRCUMFERENCE - (progress / 100) * CIRCUMFERENCE
 
   return (
     <div className="hc-track-card">
@@ -163,17 +60,17 @@ export default function TrackCard({
           <p className="hc-track-title">{song.title}</p>
         </Link>
 
-       <p className="hc-track-meta">
-  <Link
-    to={`/artist/${song.artist_id}`}
-    className="hc-artist-link"
-    onClick={(e) => e.stopPropagation()}
-  >
-    {artistName}
-  </Link>
-  {' • '}
-  {song.genre}
-</p>
+        <p className="hc-track-meta">
+          <Link
+            to={`/artist/${song.artist_id}`}
+            className="hc-artist-link"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {artistName}
+          </Link>
+          {' • '}
+          {song.genre}
+        </p>
 
         <div className="hc-track-stats">
           <span>
@@ -187,15 +84,23 @@ export default function TrackCard({
         <div className="hc-track-controls">
           <button
             type="button"
-            className={`hc-play-circle ${playing ? 'is-playing' : ''} ${
-              showSpinner ? 'is-loading' : ''
+            className={`hc-play-circle ${isThisPlaying ? 'is-playing' : ''} ${
+              isThisLoading ? 'is-loading' : ''
             }`}
-            onClick={togglePlay}
-            aria-label={playing ? 'Pause' : showSpinner ? 'Loading' : 'Play'}
-            aria-busy={showSpinner}
+            onClick={handlePlayClick}
+            aria-label={isThisPlaying ? 'Pause' : 'Play'}
           >
-            <svg className="hc-play-ring" viewBox="0 0 60 60" aria-hidden="true">
-              <circle className="hc-play-ring-track" cx="30" cy="30" r={RADIUS} />
+            <svg
+              className="hc-play-ring"
+              viewBox="0 0 60 60"
+              aria-hidden="true"
+            >
+              <circle
+                className="hc-play-ring-track"
+                cx="30"
+                cy="30"
+                r={RADIUS}
+              />
               <circle
                 className="hc-play-ring-fill"
                 cx="30"
@@ -208,10 +113,12 @@ export default function TrackCard({
               />
             </svg>
 
-            {showSpinner ? (
+            {isThisLoading ? (
               <span className="hc-play-spinner" aria-hidden="true"></span>
             ) : (
-              <i className={`fas ${playing ? 'fa-pause' : 'fa-play'}`}></i>
+              <i
+                className={`fas ${isThisPlaying ? 'fa-pause' : 'fa-play'}`}
+              ></i>
             )}
           </button>
 
@@ -225,13 +132,6 @@ export default function TrackCard({
             <i className="fas fa-download"></i>
           </a>
         </div>
-
-        <audio
-          ref={audioRef}
-          src={song.audio_url}
-          preload="metadata"
-          crossOrigin="anonymous"
-        />
       </div>
     </div>
   )
